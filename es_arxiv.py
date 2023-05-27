@@ -51,3 +51,43 @@ def index_papers(query, size):
 # Test the function with some example queries and sizes
 print(index_papers('machine learning', 10))
 print(index_papers('natural language processing', 20))
+
+
+
+
+# Connect to Neo4j
+uri = "bolt://localhost:7687"
+user = "neo4j"
+password = "password"
+driver = GraphDatabase.driver(uri, auth=(user, password))
+
+# Define a Cypher query to create the nodes and relationships in Neo4j
+cypher_query = """
+UNWIND $papers AS paper
+MERGE (p:Paper {id: paper.id})
+SET p.title = paper.title,
+    p.summary = paper.summary,
+    p.authors = paper.authors,
+    p.updated = paper.updated
+"""
+
+# Define a function to extract papers from Elasticsearch and load them into Neo4j
+def index_papers_to_neo4j(query, size):
+    # Search for papers in Elasticsearch
+    response = es.search(index='papers', q=query, size=size)
+    papers = response['hits']['hits']
+    # Transform the paper documents into dictionaries
+    paper_dicts = []
+    for paper in papers:
+        paper_dict = paper['_source']
+        paper_dict['id'] = paper['_id']
+        paper_dicts.append(paper_dict)
+   
+    # Load the paper dictionaries into Neo4j
+    with driver.session() as session:
+        session.run(cypher_query, papers=paper_dicts)
+
+# Call the function to index papers with the "machine learning" query and a size of 10
+index_papers_to_neo4j('machine learning', 10)
+# Call the function to index papers with the "natural language processing" query and a size of 20
+index_papers_to_neo4j('natural language processing', 20)
