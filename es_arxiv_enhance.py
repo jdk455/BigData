@@ -105,18 +105,18 @@ def search_papers(query=None, author=None, topic=None, similar_to=None, size=10)
     # If query is given, add a match query on title and summary fields with default operator AND
     if query:
         s = s.query('multi_match', query=query, fields=['title', 'summary'], operator='and')
-        # If author is given, add a term query on authors field with lowercased value
-        if author:
-            s = s.query('term', authors=author.lower())
-            # If topic is given, add a match query on summary field with default operator OR and minimum should match 2
-            if topic:
-                s = s.query('match', summary={'query': topic, 'operator': 'or', 'minimum_should_match': 2})
+    # If author is given, add a term query on authors field with lowercased value
+    if author:
+        s = s.query('term', authors=author.lower())
+    # If topic is given, add a match query on summary field with default operator OR and minimum should match 2
+    if topic:
+        s = s.query('match', summary={'query': topic, 'operator': 'or', 'minimum_should_match': 2})
                 # If similar_to is given, add a more like this query on title and summary fields with like value and min term freq 1 
-                if similar_to:
-                    s = s.query('more_like_this', fields=['title', 'summary'], like=similar_to, min_term_freq=1)
-                    # Set the size of the search results to the given size or default value 10 
-                    s = s[:size]
-                    # Execute the search and return the hits as a list of dictionaries 
+    if similar_to:
+        s = s.query('more_like_this', fields=['title', 'summary'], like=similar_to, min_term_freq=1)
+    # Set the size of the search results to the given size or default value 10 
+    s = s[:size]
+    # Execute the search and return the hits as a list of dictionaries 
     return [hit.to_dict() for hit in s.execute()]
 
 #4.介绍如何使用 Python 的 matplotlib 库和 ElasticSearch 进行论文数据的可视化，包括论文数量、热门主题、作者合作网络等的统计图表和交互界面
@@ -132,20 +132,15 @@ def visualize_papers(query=None, author=None, topic=None, similar_to=None):
     # If query is given, add a match query on title and summary fields with default operator AND 
     if query:
         s = s.query('multi_match', query=query, fields=['title', 'summary'], operator='and')
-        # s = s.query('multi_match', query=query, fields=['title'], operator='and')
-
-
-        # If author is given, add a term query on authors field with lowercased value 
-        if author:
-            s = s.query('term', authors=author.lower())
-
-            # If topic is given, add a match query on summary field with default operator OR and minimum should match 2 
-            if topic:
-                s = s.query('match', summary={'query': topic, 'operator': 'or', 'minimum_should_match': 2})
-
-                # If similar_to is given, add a more like this query on title and summary fields with like value and min term freq 1 
-                if similar_to:
-                    s = s.query('more_like_this', fields=['title', 'summary'], like=similar_to, min_term_freq=1)
+    # If author is given, add a term query on authors field with lowercased value 
+    if author:
+        s = s.query('term', authors=author.lower())
+    # If topic is given, add a match query on summary field with default operator OR and minimum should match 2 
+    if topic:
+        s = s.query('match', summary={'query': topic, 'operator': 'or', 'minimum_should_match': 2})
+    # If similar_to is given, add a more like this query on title and summary fields with like value and min term freq 1 
+    if similar_to:
+        s = s.query('more_like_this', fields=['title', 'summary'], like=similar_to, min_term_freq=1)
 
     # Add an aggregation on updated field with monthly interval and format yyyy-MM 
     s.aggs.bucket('papers_over_time', 'date_histogram', field='updated', calendar_interval='month', format='yyyy-MM')
@@ -158,6 +153,70 @@ def visualize_papers(query=None, author=None, topic=None, similar_to=None):
 
     # Execute the search and get the aggregations as dictionaries 
     response = s.execute()
+
+
+
+    # ###########start equivalent code###################
+    # query = {
+    #     'query': {
+    #         'bool': {
+    #             'must': []
+    #         }
+    #     },
+    #     'aggs': {
+    #         'papers_over_time': {
+    #             'date_histogram': {
+    #                 'field': 'updated',
+    #                 'calendar_interval': 'month',
+    #                 'format': 'yyyy-MM'
+    #             }
+    #         },
+    #         'popular_topics': {
+    #             'significant_terms': {
+    #                 'field': 'summary',
+    #                 'size': 10
+    #             }
+    #         },
+    #         'top_authors': {
+    #             'terms': {
+    #                 'field': 'authors',
+    #                 'size': 10
+    #             }
+    #         }
+    #     }
+    # }
+
+    # # Add a match query on title and summary fields with default operator AND if a query is given
+    # if query:
+    #     query['query']['bool']['must'].append({
+    #         'multi_match': {
+    #             'query': query,
+    #             'fields': ['title', 'summary'],
+    #             'operator': 'and'
+    #         }
+    #     })
+
+    # # Add a term query on authors field with lowercased value if an author is given
+    # if author:
+    #     query['query']['bool']['must'].append({
+    #         'term': {'authors': author.lower()}
+    #     })
+
+    # # Add match query on summary field with default operator OR and minimum should match 2 if a topic is given
+    # if topic:
+    #     query['query']['bool']['must'].append({
+    #         'match': {'summary': {'query': topic, 'operator': 'or', 'minimum_should_match': 2}}
+    #     })
+
+    # # Add a more like this query on title and summary fields with like value and min term freq 1 if similar_to is given
+    # if similar_to:
+    #     query['query']['bool']['must'].append({
+    #         'more_like_this': {'fields': ['title', 'summary'], 'like': similar_to, 'min_term_freq': 1}
+    #     })
+    # # Execute the search query and get the results
+    # response = es.search(index='papers', body=query)
+
+     ###########end equivalent code###################
     papers_over_time = response.aggregations.papers_over_time.buckets 
     popular_topics = response.aggregations.popular_topics.buckets 
     top_authors = response.aggregations.top_authors.buckets 
@@ -165,12 +224,12 @@ def visualize_papers(query=None, author=None, topic=None, similar_to=None):
     # Create a figure with three subplots 
     fig, (ax1, ax2, ax3) = plt.subplots(3)
 
-    # # Plot the papers over time as a line chart on ax1 
-    # ax1.bar([bucket.key for bucket in papers_over_time], [bucket.doc_count for bucket in papers_over_time])
-    # ax1.set_xlabel('Month')
-    # ax1.set_ylabel('Number of Papers')
-    # ax1.set_title('Papers Over Time')
-    # plt.show()
+    # Plot the papers over time as a line chart on ax1 
+    ax1.bar([bucket.key_as_string for bucket in papers_over_time], [bucket.doc_count for bucket in papers_over_time])
+    ax1.set_xlabel('Month')
+    ax1.set_ylabel('Number of Papers')
+    ax1.set_title('Papers Over Time')
+    
 
     # Plot the popular topics as a bar chart on ax2
     ax2.bar([bucket.key for bucket in popular_topics], [bucket.doc_count for bucket in popular_topics])
@@ -189,10 +248,10 @@ def visualize_papers(query=None, author=None, topic=None, similar_to=None):
 
 #5.测试数据
 # # Crawl 100 papers from arXiv with the query 'machine learning'
-# papers = crawl_papers('machine learning', 100)
+# papers = crawl_papers('machine learning', 1000)
 
 # # Index the papers to Elasticsearch
 # index_papers(papers)
 
 # # Search for papers with the query 'deep learning' and visualize the results
-visualize_papers('machine learning')
+visualize_papers('machine')
